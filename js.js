@@ -1,3 +1,7 @@
+var database = firebase.database();
+var firebaseVideoRef;
+var videoId;
+
 var times = [
   {
     time: 0,
@@ -100,12 +104,12 @@ function addTimestamp() {
     name: 'Slot ' + times.length
   });
 
-  updateList();
+  update();
 }
 
 function deleteTimestamp(i) {
   times.splice(i, 1);
-  updateList();
+  update();
 }
 
 var editDialog = document.querySelector('.edit-timestamp');
@@ -144,7 +148,7 @@ function edit(i) {
   times[i].time = parseInt($('#time').val());
 
   closeDialog();
-  updateList();
+  update();
 }
 
 function closeDialog() {
@@ -185,8 +189,6 @@ function startStopLoop() {
   }, 100);
 }
 
-updateList();
-
 function fancyTimeFormat(time) {   
   // Hours, minutes and seconds
   var hrs = ~~(time / 3600);
@@ -203,4 +205,37 @@ function fancyTimeFormat(time) {
   ret += "" + mins + ":" + (secs < 10 ? "0" : "");
   ret += "" + secs;
   return ret;
+}
+
+function changeVideoRef(newId) {
+  if (!youtubeReady) {
+    return;
+  }
+  videoId = newId;
+  firebaseVideoRef = database.ref('slots/' + newId);
+  firebaseVideoRef.once('value').then(function(snapshot) {
+    if (snapshot.val()) {
+      times = snapshot.val();
+    } else {
+      times = [];
+    }
+    updateVideo();
+    update();
+  });
+}
+
+var player;
+function updateVideo() {
+  player = new YT.Player('player', {
+    videoId: videoId
+  });
+}
+
+function saveOnline() {
+  firebaseVideoRef.set(times);
+}
+
+function update() {
+  updateList();
+  saveOnline();
 }

@@ -54,40 +54,32 @@
     </dialog>
     
     <script src="dialog-polyfill.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/4.10.1/firebase.js"></script>
+    <script>
+      // Initialize Firebase
+      var config = {
+        apiKey: "AIzaSyD4k7EyZNmvH6WzAVUjisEEg41Mn5kl5VE",
+        authDomain: "tuto-brute.firebaseapp.com",
+        databaseURL: "https://tuto-brute.firebaseio.com",
+        projectId: "tuto-brute",
+        storageBucket: "",
+        messagingSenderId: "531672552338"
+      };
+      firebase.initializeApp(config);
+    </script>
     <script>
       // 2. This code loads the IFrame Player API code asynchronously.
       var tag = document.createElement('script');
-
       tag.src = "https://www.youtube.com/iframe_api";
       var firstScriptTag = document.getElementsByTagName('script')[0];
       firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
       // 3. This function creates an <iframe> (and YouTube player)
       //    after the API code downloads.
-      var player;
+      var youtubeReady = false;
       function onYouTubeIframeAPIReady() {
-        player = new YT.Player('player', {
-          videoId: 'q0QUF_VufjY',
-          events: {
-            'onReady': onPlayerReady,
-            'onStateChange': onPlayerStateChange
-          }
-        });
-      }
-
-      // 4. The API will call this function when the video player is ready.
-      function onPlayerReady(event) {
-        // event.target.playVideo();
-      }
-
-      // 5. The API calls this function when the player's state changes.
-      //    The function indicates that when playing a video (state=1),
-      //    the player should play for six seconds and then stop.
-      var done = false;
-      function onPlayerStateChange(event) {
-      }
-      function stopVideo() {
-        player.stopVideo();
+        youtubeReady = true;
+        changeVideoRef('q0QUF_VufjY');
       }
     </script>
 
