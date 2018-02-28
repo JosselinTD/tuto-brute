@@ -1,58 +1,7 @@
 var database = firebase.database();
 var firebaseVideoRef;
 var videoId;
-
-var times = [
-  {
-    time: 0,
-    name: 'Slot 1'
-  },
-  {
-    time: 84.59408601335144,
-    name: 'Slot 2'
-  },
-  {
-    time: 91.9203089885559,
-    name: 'Slot 3'
-  },
-  {
-    time: 94.99626696376038,
-    name: 'Slot 4'
-  },
-  {
-    time: 100.27324491416931,
-    name: 'Slot 5'
-  },
-  {
-    time: 105.07014784550476,
-    name: 'Slot 6'
-  },
-  {
-    time: 108.81039385504151,
-    name: 'Slot 7'
-  },
-  {
-    time: 111.96542206484985,
-    name: 'Slot 8'
-  }
-];
-document.body.onkeyup = function(e){
-  if(e.keyCode == 32){
-      times.push(player.getCurrentTime());
-  } else if(e.keyCode == 13) {
-    if (loop[0] !== undefined) {
-      loop = [];
-    } else {
-      var currentTime = player.getCurrentTime();
-      var i;
-      for (i = 0; i < times.length - 1; i++) {
-        if (times[i] < currentTime && times[i+1] > currentTime) {
-          loop = [times[i], times[i+1]];
-        }
-      }
-    }
-  }
-}
+var times;
 
 function updateList() {
   var list = $('.list .mdl-list');
@@ -207,6 +156,25 @@ function fancyTimeFormat(time) {
   return ret;
 }
 
+var allVideos = [];
+database.ref('slots').once('value').then(function(snapshot) {
+  var allIds = Object.keys(snapshot.val());
+
+  $.get(`https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${allIds.join(',')}&key=AIzaSyC8iyr3E0ftkZg5ODX5Au3Wrrq6YMtusSc`)
+    .then(function(res) {
+      res.items.forEach(function(item) {
+        allVideos.push({
+          id: item.id,
+          title: item.snippet.title
+        });
+
+        $('.video-list').append(`
+          <span class="mdl-navigation__link" onclick="changeVideoRef('${item.id}')">${item.snippet.title}</span>
+        `);
+      });
+    });
+});
+
 function changeVideoRef(newId) {
   if (!youtubeReady) {
     return;
@@ -226,12 +194,17 @@ function changeVideoRef(newId) {
 
 var player;
 function updateVideo() {
-  player = new YT.Player('player', {
-    videoId: videoId
-  });
+  if (!player) {
+    player = new YT.Player('player', {
+      videoId: videoId
+    });
+  } else {
+    player.loadVideoById(videoId);
+  }
 }
 
 function saveOnline() {
+  console.log(firebaseVideoRef);
   firebaseVideoRef.set(times);
 }
 
@@ -239,3 +212,10 @@ function update() {
   updateList();
   saveOnline();
 }
+
+$(".new-video").on('keyup', function (e) {
+    if (e.keyCode == 13) {
+      changeVideoRef($(this).val());
+      $(this).val('');
+    }
+});
