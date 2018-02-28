@@ -72,7 +72,9 @@ function updateList() {
           </span>
           ${fancyTimeFormat(parseInt(time.time))}: ${time.name}
           <span class="mdl-list__item-secondary-content">
-              <span class="mdl-list__item-secondary-action"><i class="material-icons">mode edit</i></span>
+              <span class="mdl-list__item-secondary-action" onclick="editTimestamp(${index})">
+                <i class="material-icons">mode edit</i>
+              </span>
               <span class="mdl-list__item-secondary-action" onclick="deleteTimestamp(${index})">
                 <i class="material-icons">delete</i>
               </span>
@@ -104,6 +106,49 @@ function addTimestamp() {
 function deleteTimestamp(i) {
   times.splice(i, 1);
   updateList();
+}
+
+var editDialog = document.querySelector('.edit-timestamp');
+if (! editDialog.showModal) {
+  dialogPolyfill.registerDialog(editDialog);
+}
+function editTimestamp(i) {
+  var time = times[i];
+  $(editDialog).html(`
+    <h4>Edit this slot</h4>
+    <div class="mdl-textfield mdl-js-textfield">
+      <input class="mdl-textfield__input" type="text" id="name" value="${time.name}">
+      <label class="mdl-textfield__label" for="name">Name</label>
+    </div>
+    <div class="mdl-textfield mdl-js-textfield">
+      <input class="mdl-textfield__input" type="text" id="time" value="${time.time}">
+      <label class="mdl-textfield__label" for="time">Time in seconds</label>
+    </div>
+    <div class="mdl-dialog__actions">
+      <button type="button" class="mdl-button" onclick="closeDialog()">Cancel</button>
+      <button type="button" class="mdl-button close" onclick="edit(${i})">Edit</button>
+    </div>
+  `);
+
+  if (window.componentHandler) {
+    $(editDialog).find('.mdl-textfield').each(function() {
+      componentHandler.upgradeElement(this);
+    });
+  }
+
+  editDialog.showModal();
+}
+
+function edit(i) {
+  times[i].name = $('#name').val();
+  times[i].time = parseInt($('#time').val());
+
+  closeDialog();
+  updateList();
+}
+
+function closeDialog() {
+  editDialog.close();
 }
 
 var currentInterval;
