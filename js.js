@@ -1,6 +1,6 @@
 var database = firebase.database();
 var firebaseVideoRef;
-var videoId;
+var videoSource;
 var times;
 
 function updateList() {
@@ -49,7 +49,7 @@ function updateList() {
 
 function addTimestamp() {
   times.push({
-    time: player.getCurrentTime(),
+    time: player.currentTime,
     name: 'Slot ' + times.length
   });
 
@@ -94,7 +94,7 @@ function editTimestamp(i) {
 
 function edit(i) {
   times[i].name = $('#name').val();
-  times[i].time = parseInt($('#time').val());
+  times[i].time = parseFloat($('#time').val());
 
   closeDialog();
   update();
@@ -110,6 +110,7 @@ function startStopLoop() {
     clearInterval(currentInterval);
     currentInterval = undefined;
     $('.start-stop').html('Start Loop');
+    player.pause();
     return;
   }
 
@@ -125,17 +126,16 @@ function startStopLoop() {
   if (stopIndex < times.length) {
     stop = times[stopIndex].time;
   } else {
-    stop = player.getDuration() - 1;
+    stop = player.duration - 1;
   }
+  var duration = stop - start;
+
+  player.currentTime = start;
+  player.play();
 
   currentInterval = setInterval(function() {
-    if (player.getCurrentTime() >= stop || player.getCurrentTime() < start) {
-      player.seekTo(start, true);
-      if (player.getPlayerState() !== 1) {
-        player.playVideo();
-      }
-    }
-  }, 100);
+    player.currentTime = start;
+  }, duration * 1000);
 }
 
 function fancyTimeFormat(time) {   
@@ -160,52 +160,33 @@ var allVideos = [];
 database.ref('slots').once('value').then(function(snapshot) {
   var allIds = Object.keys(snapshot.val());
 
-  $.get(`https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${allIds.join(',')}&key=AIzaSyC8iyr3E0ftkZg5ODX5Au3Wrrq6YMtusSc`)
-    .then(function(res) {
-      res.items.forEach(function(item) {
-        allVideos.push({
-          id: item.id,
-          title: item.snippet.title
-        });
-
-        $('.video-list').append(`
-          <span class="mdl-navigation__link" onclick="changeVideoRef('${item.id}')">${item.snippet.title}</span>
-        `);
-      });
-    });
 });
 
-function changeVideoRef(newId) {
-  if (!youtubeReady) {
-    return;
-  }
-  videoId = newId;
-  firebaseVideoRef = database.ref('slots/' + newId);
+function changeVideoRef(newSource) {
+  videoSource = newSource;
+  times = [];
+  updateVideo();
+  update();
+  /*firebaseVideoRef = database.ref('slots/' + newId);
   firebaseVideoRef.once('value').then(function(snapshot) {
     if (snapshot.val()) {
       times = snapshot.val();
     } else {
       times = [];
     }
-    updateVideo();
-    update();
-  });
+  });*/
 }
 
-var player;
+var player = $('#player').get(0);
 function updateVideo() {
-  if (!player) {
-    player = new YT.Player('player', {
-      videoId: videoId
-    });
-  } else {
-    player.loadVideoById(videoId);
-  }
+  $(player).empty();
+  $(player).append(`
+    <source src="${videoSource}" type="video/mp4"/>
+  `);
 }
 
 function saveOnline() {
-  console.log(firebaseVideoRef);
-  firebaseVideoRef.set(times);
+  // firebaseVideoRef.set(times);
 }
 
 function update() {
@@ -219,3 +200,5 @@ $(".new-video").on('keyup', function (e) {
       $(this).val('');
     }
 });
+
+changeVideoRef('http://res.cloudinary.com/indie-seller/video/upload/v1519987950/victorspinaosolo_ktutsw.mp4');
