@@ -1,40 +1,43 @@
 var database = firebase.database();
 var firebaseVideoRef;
-var videoSource;
-var times;
+var datas = {
+  times: []
+};
 
 function updateList() {
   var list = $('.list .mdl-list');
 
   list.empty();
 
-  times.sort(function(a, b) {
+  datas.times.sort(function(a, b) {
     return a.time - b.time;
   });
 
   var time;
   var index = 0;
-  for (time of times) {
+  var slider;
+  for (time of datas.times) {
     list.append(`
       <li class="mdl-list__item">
-        <span class="mdl-list__item-primary-content">
-          <span class="mdl-list__item-secondary-action">
-            <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect slot" for="slot-${index}">
-              <input type="checkbox" id="slot-${index}" class="mdl-checkbox__input"/>
-            </label>
-          </span>
-          ${fancyTimeFormat(parseInt(time.time))}: ${time.name}
-          <span class="mdl-list__item-secondary-content">
-              <span class="mdl-list__item-secondary-action" onclick="editTimestamp(${index})">
-                <i class="material-icons">mode edit</i>
-              </span>
-              <span class="mdl-list__item-secondary-action" onclick="deleteTimestamp(${index})">
-                <i class="material-icons">delete</i>
-              </span>
-          </span>
-        </span>
+        <div class="list-item-controls"></div>
+        <div class="list-item-range"></div>
       </li>
     `);
+
+    slider = list.find('.list-item-range').last().get(0);
+
+    noUiSlider.create(slider, {
+      start: [0, parseInt(player.duration)],
+      connect: true,
+      range: {
+        'min': 0,
+        'max': parseInt(player.duration)
+      }
+    });
+
+    slider.noUiSlider.on('slide', function(values, handle) {
+      player.currentTime = values[handle];
+    })
 
     index++;
   }
@@ -48,53 +51,33 @@ function updateList() {
 }
 
 function addTimestamp() {
-  times.push({
+  datas.times.push({
     time: player.currentTime,
-    name: 'Slot ' + times.length
+    name: 'Slot ' + datas.times.length
   });
 
   update();
 }
 
 function deleteTimestamp(i) {
-  times.splice(i, 1);
+  datas.times.splice(i, 1);
   update();
 }
 
 var editDialog = document.querySelector('.edit-timestamp');
-if (! editDialog.showModal) {
-  dialogPolyfill.registerDialog(editDialog);
+var newVideoDialog = document.querySelector('.new-video');
+if (! newVideoDialog.showModal) {
+  dialogPolyfill.registerDialog(newVideoDialog);
 }
 function editTimestamp(i) {
-  var time = times[i];
-  $(editDialog).html(`
-    <h4>Edit this slot</h4>
-    <div class="mdl-textfield mdl-js-textfield">
-      <input class="mdl-textfield__input" type="text" id="name" value="${time.name}">
-      <label class="mdl-textfield__label" for="name">Name</label>
-    </div>
-    <div class="mdl-textfield mdl-js-textfield">
-      <input class="mdl-textfield__input" type="text" id="time" value="${time.time}">
-      <label class="mdl-textfield__label" for="time">Time in seconds</label>
-    </div>
-    <div class="mdl-dialog__actions">
-      <button type="button" class="mdl-button" onclick="closeDialog()">Cancel</button>
-      <button type="button" class="mdl-button close" onclick="edit(${i})">Edit</button>
-    </div>
-  `);
-
-  if (window.componentHandler) {
-    $(editDialog).find('.mdl-textfield').each(function() {
-      componentHandler.upgradeElement(this);
-    });
-  }
+  var time = datas.times[i];
+  $('#name').val(time.name);
 
   editDialog.showModal();
 }
 
 function edit(i) {
-  times[i].name = $('#name').val();
-  times[i].time = parseFloat($('#time').val());
+  datas.times[i].name = $('#name').val();
 
   closeDialog();
   update();
@@ -121,10 +104,10 @@ function startStopLoop() {
   $('.start-stop').html('Stop Loop');
   var startIndex = parseInt(selecteds.first().attr('for').replace('slot-', ''));
   var stopIndex = parseInt(selecteds.last().attr('for').replace('slot-', '')) + 1;
-  var start = times[startIndex].time;
+  var start = datas.times[startIndex].time;
   var stop;
-  if (stopIndex < times.length) {
-    stop = times[stopIndex].time;
+  if (stopIndex < datas.times.length) {
+    stop = datas.times[stopIndex].time;
   } else {
     stop = player.duration - 1;
   }
@@ -157,36 +140,48 @@ function fancyTimeFormat(time) {
 }
 
 var allVideos = [];
-database.ref('slots').once('value').then(function(snapshot) {
-  var allIds = Object.keys(snapshot.val());
-
+database.ref('videos').once('value').then(function(snapshot) {
+  var vals = snapshot.val();
+  if (!vals) {
+    return;
+  }
+  Object.keys(vals).forEach(function(k) {
+    var item = vals[k];
+    $('.video-list').append(`
+      <span class="mdl-navigation__link" onclick="changeVideoRef('${item.id}')">${item.name}</span>
+    `);
+  });
 });
 
-function changeVideoRef(newSource) {
-  videoSource = newSource;
-  times = [];
-  updateVideo();
-  update();
-  /*firebaseVideoRef = database.ref('slots/' + newId);
-  firebaseVideoRef.once('value').then(function(snapshot) {
+function changeVideoRef(md5) {
+  database.ref('videos/' + md5).once('value').then(function(snapshot) {
     if (snapshot.val()) {
-      times = snapshot.val();
-    } else {
-      times = [];
+      datas = snapshot.val();
     }
-  });*/
+    updateVideo();
+  });
 }
 
 var player = $('#player').get(0);
+var waitingForCanPlay = false;
 function updateVideo() {
   $(player).empty();
   $(player).append(`
-    <source src="${videoSource}" type="video/mp4"/>
+    <source src="${datas.url}" type="video/mp4"/>
   `);
+  player.load();
+  waitingForCanPlay = true;
+}
+
+player.oncanplay = function() {
+  if (waitingForCanPlay) {
+    update();
+    waitingForCanPlay = false;
+  }
 }
 
 function saveOnline() {
-  // firebaseVideoRef.set(times);
+  return database.ref('videos/' + datas.id).set(datas);
 }
 
 function update() {
@@ -194,11 +189,41 @@ function update() {
   saveOnline();
 }
 
-$(".new-video").on('keyup', function (e) {
-    if (e.keyCode == 13) {
-      changeVideoRef($(this).val());
-      $(this).val('');
-    }
-});
+function uploadVideo() {
+  newVideoDialog.close();
+  cloudinary.openUploadWidget({
+    upload_preset: 'keavjhk2',
+    resource_type: 'video'
+  }, function(error, result) {
+    newVideoDialog.showModal();
+    $('.upload-video').before(`
+      <span class="new-video-url">${result[0].secure_url}</span>
+    `);
+  });
+}
 
-changeVideoRef('http://res.cloudinary.com/indie-seller/video/upload/v1519987950/victorspinaosolo_ktutsw.mp4');
+function addTutorial() {
+  datas = {
+    id: MD5($('.new-video-url').html()),
+    name: $('#newVideoName').val(),
+    url: $('.new-video-url').html(),
+    times: [
+      {
+        name: 'Slot 0',
+        time: 0
+      }
+    ]
+  };
+
+  saveOnline()
+    .then(function(res) {
+      newVideoDialog.close();
+      changeVideoRef(datas.id);
+    });
+}
+
+function openNewVideoDialog() {
+  $('#newVideoName').val('');
+  $('.new-video-url').remove();
+  newVideoDialog.showModal();
+}
