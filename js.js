@@ -4,6 +4,8 @@ var datas = {
   times: []
 };
 
+var lastSlider;
+var lastHandle;
 function updateList() {
   var list = $('.list .mdl-list');
 
@@ -29,6 +31,7 @@ function updateList() {
     noUiSlider.create(slider, {
       start: [0, parseInt(player.duration)],
       connect: true,
+      step: 0.1,
       range: {
         'min': 0,
         'max': parseInt(player.duration)
@@ -37,7 +40,11 @@ function updateList() {
 
     slider.noUiSlider.on('slide', function(values, handle) {
       player.currentTime = values[handle];
-    })
+    });
+    slider.noUiSlider.on('end', function(values, handle) {
+      lastSlider = this;
+      lastHandle = handle;
+    });
 
     index++;
   }
@@ -47,6 +54,21 @@ function updateList() {
     list.find('.mdl-checkbox').each(function() {
       componentHandler.upgradeElement(this);
     });
+  }
+}
+
+document.onkeydown = function(e) {
+  if (lastSlider) {
+    var currentValues = lastSlider.get();
+    currentValues[0] = parseFloat(currentValues[0]);
+    currentValues[1] = parseFloat(currentValues[1]);
+    if (e.keyCode === 37 && currentValues[lastHandle] > 0) {
+      currentValues[lastHandle] -= 0.1;
+    } else if (e.keyCode === 39 && currentValues[lastHandle] < player.duration) {
+      currentValues[lastHandle] += 0.1;
+    }
+    lastSlider.set(currentValues);
+    player.currentTime = currentValues[lastHandle];
   }
 }
 
