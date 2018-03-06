@@ -85,7 +85,7 @@ document.onkeydown = function(e) {
 
 function addTimestamp() {
   datas.times.push({
-    range: [datas.times[datas.times.length - 1].range[0], player.duration],
+    range: [datas.times[datas.times.length - 1].range[1], player.duration],
     name: 'Slot ' + datas.times.length
   });
 
