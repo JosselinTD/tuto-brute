@@ -6,22 +6,29 @@ var datas = {
 
 var lastSlider;
 var lastHandle;
+var lastTime;
 function updateList() {
   var list = $('.list .mdl-list');
 
   list.empty();
 
   datas.times.sort(function(a, b) {
-    return a.time - b.time;
+    return a.range[1] - b.range[1];
   });
 
-  var time;
   var index = 0;
   var slider;
-  for (time of datas.times) {
+  for (let time of datas.times) {
     list.append(`
       <li class="mdl-list__item">
-        <div class="list-item-controls"></div>
+        <div class="list-item-controls">
+          <div class="list-item-title">${time.name}</div>
+          <div class="list-item-controls-icons">
+            <i class="material-icons" onclick="startStopLoop(${index})">play_arrow</i>
+            <i class="material-icons" onclick="editTimestamp(${index})">mode_edit</i>
+            <i class="material-icons" onclick="deleteTimestamp(${index})">delete</i>
+          </div>
+        </div>
         <div class="list-item-range"></div>
       </li>
     `);
@@ -29,7 +36,7 @@ function updateList() {
     slider = list.find('.list-item-range').last().get(0);
 
     noUiSlider.create(slider, {
-      start: [0, parseInt(player.duration)],
+      start: [time.range[0], time.range[1]],
       connect: true,
       step: 0.1,
       range: {
@@ -44,14 +51,16 @@ function updateList() {
     slider.noUiSlider.on('end', function(values, handle) {
       lastSlider = this;
       lastHandle = handle;
+      lastTime = time;
+      time.range = values;
+      saveOnline();
     });
 
     index++;
   }
 
   if (window.componentHandler) {
-    componentHandler.upgradeElement(list.get(0));
-    list.find('.mdl-checkbox').each(function() {
+    $('.mdl-list__item').find('.material-icons').each(function() {
       componentHandler.upgradeElement(this);
     });
   }
@@ -69,12 +78,14 @@ document.onkeydown = function(e) {
     }
     lastSlider.set(currentValues);
     player.currentTime = currentValues[lastHandle];
+    lastTime.range = currentValues;
+    saveOnline();
   }
 }
 
 function addTimestamp() {
   datas.times.push({
-    time: player.currentTime,
+    range: [datas.times[datas.times.length - 1].range[0], player.duration],
     name: 'Slot ' + datas.times.length
   });
 
@@ -95,6 +106,8 @@ function editTimestamp(i) {
   var time = datas.times[i];
   $('#name').val(time.name);
 
+  $('#editButton').attr('onclick', `edit(${i})`);
+
   editDialog.showModal();
 }
 
@@ -110,7 +123,7 @@ function closeDialog() {
 }
 
 var currentInterval;
-function startStopLoop() {
+function startStopLoop(i) {
   if (currentInterval) {
     clearInterval(currentInterval);
     currentInterval = undefined;
@@ -119,28 +132,18 @@ function startStopLoop() {
     return;
   }
 
-  var selecteds = $('.slot.is-checked');
-  if (!selecteds.length) {
-    return;
-  }
-  $('.start-stop').html('Stop Loop');
-  var startIndex = parseInt(selecteds.first().attr('for').replace('slot-', ''));
-  var stopIndex = parseInt(selecteds.last().attr('for').replace('slot-', '')) + 1;
-  var start = datas.times[startIndex].time;
-  var stop;
-  if (stopIndex < datas.times.length) {
-    stop = datas.times[stopIndex].time;
-  } else {
-    stop = player.duration - 1;
-  }
+  var start = datas.times[i].range[0];
+  var stop = datas.times[i].range[1]
   var duration = stop - start;
 
   player.currentTime = start;
   player.play();
 
   currentInterval = setInterval(function() {
-    player.currentTime = start;
-  }, duration * 1000);
+    if (player.currentTime < start || player.currentTime >= stop) {
+      player.currentTime = start;
+    }
+  }, 100);
 }
 
 function fancyTimeFormat(time) {   
@@ -232,7 +235,7 @@ function addTutorial() {
     times: [
       {
         name: 'Slot 0',
-        time: 0
+        range: [0, 10]
       }
     ]
   };

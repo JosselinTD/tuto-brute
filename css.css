@@ -33,10 +33,6 @@
 	margin-top: 10px;
 }
 
-.list .mdl-list__item .mdl-list__item-secondary-content {
-	margin-left: auto;
-}
-
 @media screen and (max-width: 1024px) {
 	.video {
 		height: calc(80vh - 66px);
@@ -53,4 +49,16 @@
 
 .list-item-range {
 	width: 100%;
+}
+
+.mdl-list__item {
+	display: block;
+}
+.list-item-controls {
+	display: flex;
+	width: 100%;
+}
+
+.list-item-controls-icons {
+	margin-left: auto;
 }
